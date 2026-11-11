@@ -249,21 +249,28 @@ export async function listTransactions(user: UserDocument, query: TransactionQue
       ...(lower ? { $gte: lower } : {}),
       ...(upper ? { $lt: upper } : {}),
     };
-  if (query.search)
-    filter.description = {
+  if (query.search) {
+    const pattern = {
       $regex: query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
       $options: 'i',
     };
+    filter.$or = [{ description: pattern }, { notes: pattern }];
+  }
   const sort: Record<string, 1 | -1> = query.sort.startsWith('amount')
     ? { amount: query.sort.endsWith('asc') ? 1 : -1, _id: -1 }
     : { transactionDate: query.sort.endsWith('asc') ? 1 : -1, _id: -1 };
-  const [total, docs] = await Promise.all([
+  const [total, totalAmountResult, docs] = await Promise.all([
     Transaction.countDocuments(filter),
+    Transaction.aggregate<{ totalSpent: number }>([
+      { $match: filter },
+      { $group: { _id: null, totalSpent: { $sum: '$amount' } } },
+    ]),
     Transaction.find(filter)
       .sort(sort)
       .skip((query.page - 1) * query.limit)
       .limit(query.limit),
   ]);
+  const totalAmount = totalAmountResult[0]?.totalSpent || 0;
   const bucketIds = [...new Set(docs.map((t) => String(t.bucketId)))];
   const buckets = await Bucket.find({ userId: user._id, _id: { $in: bucketIds } }).lean();
   const bm = new Map(buckets.map((b) => [String(b._id), b]));
@@ -286,7 +293,13 @@ export async function listTransactions(user: UserDocument, query: TransactionQue
       },
     };
   });
-  return { items, total, page: query.page, pages: Math.max(1, Math.ceil(total / query.limit)) };
+  return {
+    items,
+    total,
+    totalAmount,
+    page: query.page,
+    pages: Math.max(1, Math.ceil(total / query.limit)),
+  };
 }
 export async function monthlyTrends(
   user: UserDocument,

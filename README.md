@@ -6,6 +6,18 @@ A personal expense notebook built with React, Vite, TypeScript, Express and Mong
 
 ## Run locally
 
+### Quick start with Docker Compose
+
+Run the application and MongoDB with a single command:
+
+```sh
+docker compose up
+```
+
+Open **http://localhost:4000**.
+
+### Or run with local Node.js and MongoDB
+
 Requirements: Node.js 22.12+ and a running MongoDB instance on port 27017 (or a configured `MONGODB_URI`).
 
 ```sh
@@ -27,8 +39,8 @@ Default local database: `mongodb://127.0.0.1:27017/fintrack`. To change it, copy
 - Eleven default buckets; custom buckets with icon/color selection; archiving and restoration.
 - Separate monthly budgets that preserve historical amounts, with an all-bucket planner and a reviewable copy of the previous month's plan.
 - Live summary cards, spending distribution, daily and six-month trends, budget comparisons, derived budget warnings and daily spending insights.
-- Transaction search, bucket/month/date-range filters, sorting and pagination.
-- Monthly reports and CSV download containing the selected month’s actual records; annual report API.
+- Transaction search across descriptions and notes, bucket/month/date-range filters, sorting, filtered totals, and pagination.
+- Monthly reports and transaction exports with CSV downloads containing actual records; annual report API.
 - Responsive layouts, mobile navigation, keyboard search (`⌘/Ctrl K`), new-expense shortcut (`N`), focus-managed dialogs and reduced-motion support.
 - Three.js sculpture loaded on demand, with a static fallback on devices without WebGL; pointer-driven tilt and glow cards that respect reduced motion.
 

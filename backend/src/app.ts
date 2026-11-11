@@ -60,14 +60,17 @@ app.use(
     },
   }),
 );
-app.get('/api/health', (_req, res) =>
-  res
-    .status(mongoose.connection.readyState === 1 ? 200 : 503)
-    .json({
-      success: mongoose.connection.readyState === 1,
-      data: { status: mongoose.connection.readyState === 1 ? 'ready' : 'unavailable' },
-    }),
-);
+app.get('/api/health', (_req, res) => {
+  const isReady = mongoose.connection.readyState === 1;
+  return res.status(isReady ? 200 : 503).json({
+    success: isReady,
+    data: {
+      status: isReady ? 'ready' : 'unavailable',
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
 app.use('/api/v1', api);
 app.use('/api', () => {
   throw new ApiError(404, 'This API endpoint does not exist.', 'NOT_FOUND');

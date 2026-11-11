@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, SlidersHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Download,
+} from 'lucide-react';
 import { PageHeader, MonthSelect } from '../components/layout';
 import { TransactionTable } from '../components/finance';
 import { ExpenseForm } from '../components/forms';
 import { Button, Modal, Confirm, Loading, ErrorState, useToast } from '../components/ui';
-import { useTransactions, useBuckets, useFinanceMutation, send, message } from '../lib/api';
-import { useMonth } from '../lib/context';
-import type { Transaction } from '../lib/types';
+import { useTransactions, useBuckets, useFinanceMutation, send, get, message } from '../lib/api';
+import { useAuth, useMonth } from '../lib/context';
+import { downloadCSV, money } from '../lib/format';
+import type { PageResult, Transaction } from '../lib/types';
 
 export default function Transactions() {
   const { month } = useMonth();
+  const { user } = useAuth();
   const [params] = useSearchParams();
   const [search, setSearch] = useState(params.get('search') || '');
   const [debounced, setDebounced] = useState(search);
@@ -22,7 +32,49 @@ export default function Transactions() {
   const [to, setTo] = useState('');
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
+  const [exporting, setExporting] = useState(false);
   const toast = useToast();
+
+  const exportFiltered = async () => {
+    setExporting(true);
+    try {
+      const items: Transaction[] = [];
+      let p = 1,
+        pages = 1;
+      do {
+        const batch = await get<PageResult<Transaction>>('/transactions', {
+          month,
+          search: debounced || undefined,
+          bucketId: bucketId || undefined,
+          sort,
+          page: p,
+          limit: 100,
+          from: from || undefined,
+          to: to || undefined,
+        });
+        items.push(...batch.items);
+        pages = batch.pages;
+        p++;
+      } while (p <= pages);
+
+      downloadCSV(
+        [
+          ['FinTrack Transactions Export', month],
+          ['Currency', user?.currency || 'INR'],
+          ['Total Transactions', String(items.length)],
+          [],
+          ['Date', 'Description', 'Bucket', 'Amount', 'Notes'],
+          ...items.map((t) => [t.dateKey, t.description, t.bucket.name, t.amount / 100, t.notes]),
+        ],
+        `fintrack-transactions-${month}.csv`,
+      );
+      toast('Exported transactions to CSV.');
+    } catch (e) {
+      toast(message(e), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
   useEffect(() => {
     const id = setTimeout(() => {
       setDebounced(search);
@@ -61,13 +113,22 @@ export default function Transactions() {
           <label className="search-field">
             <Search size={17} />
             <input
-              aria-label="Search descriptions"
-              placeholder="Search your notebook…"
+              aria-label="Search transactions"
+              placeholder="Search descriptions or notes…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
           <div className="filter-controls">
+            <Button
+              variant="ghost"
+              disabled={exporting || !query.data?.total}
+              onClick={exportFiltered}
+              title="Export filtered transactions as CSV"
+            >
+              <Download size={15} />
+              <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+            </Button>
             <select
               aria-label="Filter by bucket"
               value={bucketId}
@@ -142,7 +203,13 @@ export default function Transactions() {
             />
             <div className="table-pagination">
               <span>
-                {query.data?.total || 0} transactions{' '}
+                {query.data?.total || 0} transactions
+                {query.data?.totalAmount !== undefined && (
+                  <>
+                    {' '}
+                    · Total: <strong>{money(query.data.totalAmount, user?.currency)}</strong>
+                  </>
+                )}{' '}
                 <span className="pagination-muted">
                   · Page {page} of {query.data?.pages || 1}
                 </span>

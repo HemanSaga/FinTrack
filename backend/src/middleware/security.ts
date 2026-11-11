@@ -67,45 +67,37 @@ export function checkOrigin(req: Request, _res: Response, next: NextFunction) {
 }
 export function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (error instanceof ZodError)
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.issues[0]?.message || 'Please check your input.',
-          fields: error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
-        },
-      });
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: error.issues[0]?.message || 'Please check your input.',
+        fields: error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
+      },
+    });
   if (error instanceof ApiError)
     return res
       .status(error.status)
       .json({ success: false, error: { code: error.code, message: error.message } });
   if (typeof error === 'object' && error && 'code' in error && error.code === 11000)
-    return res
-      .status(409)
-      .json({
-        success: false,
-        error: {
-          code: 'DUPLICATE',
-          message: 'That email or active bucket name is already in use.',
-        },
-      });
-  if (error instanceof SyntaxError && 'body' in error)
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: { code: 'INVALID_JSON', message: 'The request body is not valid JSON.' },
-      });
-  console.error('Request failed:', error instanceof Error ? error.message : 'Unknown error');
-  return res
-    .status(500)
-    .json({
+    return res.status(409).json({
       success: false,
       error: {
-        code: 'INTERNAL_ERROR',
-        message: 'We couldn’t complete that request. Please try again.',
+        code: 'DUPLICATE',
+        message: 'That email or active bucket name is already in use.',
       },
     });
+  if (error instanceof SyntaxError && 'body' in error)
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_JSON', message: 'The request body is not valid JSON.' },
+    });
+  console.error('Request failed:', error instanceof Error ? error.message : 'Unknown error');
+  return res.status(500).json({
+    success: false,
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'We couldn’t complete that request. Please try again.',
+    },
+  });
 }

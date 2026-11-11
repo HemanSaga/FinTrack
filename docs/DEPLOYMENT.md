@@ -31,7 +31,17 @@ openssl rand -hex 32
 
 The app enables Secure cookies in production. A plain-HTTP production URL will not retain the login cookie. Terminate TLS at the reverse proxy or host and configure its trusted hop count correctly.
 
-## Docker
+## Docker Compose
+
+Run the application and MongoDB together with health-checked orchestration:
+
+```sh
+docker compose up -d
+```
+
+Access the application at `http://localhost:4000`.
+
+## Docker standalone
 
 ```sh
 docker build -t fintrack .

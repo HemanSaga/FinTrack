@@ -248,12 +248,23 @@ test('search, pagination, sort, and date ranges return actual matching records',
   assert.equal(list.body.data.items.length, 1);
   assert.equal(list.body.data.items[0].amount, 100000);
   assert.equal(list.body.data.total, 2);
+  assert.equal(list.body.data.totalAmount, 112345);
+  const byNotes = await owner.get('/api/v1/transactions?search=historical+note').expect(200);
+  assert.equal(byNotes.body.data.total, 1);
+  assert.equal(byNotes.body.data.items[0].id, firstTx);
   const excluded = await owner
     .get('/api/v1/transactions?month=2025-11&from=2025-11-10&to=2025-11-20')
     .expect(200);
   assert.equal(excluded.body.data.total, 0);
   const literal = await owner.get('/api/v1/transactions?search=%2E%2A').expect(200);
   assert.equal(literal.body.data.total, 0);
+});
+test('health endpoint reports readiness, uptime, and timestamp', async () => {
+  const res = await request(app).get('/api/health').expect(200);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.data.status, 'ready');
+  assert.equal(typeof res.body.data.uptime, 'number');
+  assert.ok(res.body.data.timestamp);
 });
 test('moving an expense date changes the corresponding month totals', async () => {
   await owner.patch(`/api/v1/transactions/${firstTx}`).send({ date: '2025-12-03' }).expect(200);

@@ -60,6 +60,7 @@ export interface PageResult<T> {
   page: number;
   pages: number;
   total: number;
+  totalAmount?: number;
 }
 export interface ExpenseInput {
   description: string;
